@@ -208,6 +208,38 @@ class TileApp:
     
     
     
+    def get_image_square_bytes_no_tile_asm(self,zoom):
+        # Each tile is a square 
+        TILE_DIMENSION = 256
+        
+        # get the tile cordinate denver for now
+        x,y = self.latlon_to_tile(DENVER_LAT,DENVER_LON,zoom)
+        print(f"COLORADO CORDS {x} {y}")
+        
+        # Getting a square for now
+        left_x = x - 2
+        right_x = x + 2
+        
+        top_y = y - 2
+        bottom_y = y + 2
+        
+        stream_cursor = self.database_cursor.execute("""SELECT tile_data FROM tiles 
+                                        WHERE zoom_level = ? AND 
+                                        tile_column BETWEEN ? AND ? 
+                                        AND tile_row BETWEEN ? AND ?
+                                        ORDER BY tile_row DESC, tile_column ASC;""",
+                                        (zoom, (left_x),(right_x),(top_y),(bottom_y))
+                                        )
+        image_byte_arr = bytearray()
+        for data in stream_cursor:
+            image_byte_arr += data[0]
+            
+        image_square = 4
+            
+        return image_square*TILE_DIMENSION, image_square*TILE_DIMENSION, image_byte_arr
+        
+    
+    
     
     def get_image_square_bytes_on_zoom(self,zoom):
         # At zooms 6 7 8 starts looking at colorado only
@@ -238,11 +270,15 @@ class TileApp:
         
         # Consider pulling tiles to wrap around the world in the case less than expected is fetched using between
         
-        left_x = x - 2
-        right_x = x + 2
         
-        top_y = y - 2
-        bottom_y = y + 2
+        image_width = 8
+        image_height = 8
+        
+        left_x = x - 4
+        right_x = x + 3
+        
+        top_y = y - 4
+        bottom_y = y + 3
         
         # check for number of cutout tiles
         coutout_num_tiles = self.database_cursor.execute("""SELECT count(tile_data) FROM tiles 
@@ -262,8 +298,7 @@ class TileApp:
                                         (zoom, (left_x),(right_x),(top_y),(bottom_y))
                                         )
         
-        image_width = 4
-        image_height = 4
+        
         
         # Create image to paste to
         pil_img = Image.new('RGB',(TILE_DIM *image_width,TILE_DIM*image_height))
@@ -273,19 +308,33 @@ class TileApp:
         
         count = 0
         for data in stream_cursor:
-            image = Image.open(BytesIO(data[0]))
-            vertical_offset = int((count/image_width)) 
-            horizontal_offset =   (count%image_width) 
-            pil_img.paste(image,(vertical_offset*TILE_DIM,horizontal_offset*TILE_DIM))
+            image = Image.open(BytesIO(data[0]))            
+            vertical_offset = (count // image_width) * TILE_DIM
+            horizontal_offset = (count % image_width) * TILE_DIM
+            pil_img.paste(image,(horizontal_offset,vertical_offset))
             print(f"image pastings {horizontal_offset} {vertical_offset}")
             count = count + 1
                 
         #pil_img.save('cutout_image.png')
         pil_img = pil_img.convert("RGBA")
 
-        return image_height*TILE_DIM, image_width*TILE_DIM, pil_img.tobytes()
+        return image_width*TILE_DIM, image_height*TILE_DIM, pil_img.tobytes()
         
-        
+    ''' 2**0 = 1
+        2**1 = 2
+        2**2 = 4
+        2**3 = 8
+        2**4 = 16
+        2**5 = 32
+        2**6 = 64
+        2**7 = 128
+        2**8 = 256
+        2**9 = 512
+        2**10 = 1024
+        2**11 = 2048
+        2**12 = 4096
+        2**13 = 8192
+        2**14 = 16384'''
        
             
         

@@ -10,15 +10,19 @@ from kivy.graphics import Rectangle
 from test_tiler import TileApp
 
 # Scale
-SCALE_MINIMUM = 2
-SCALE_MAXIMUM = 14
+SCALE_MINIMUM = 1
+SCALE_MAXIMUM = 18
+
+tiler_scale_minimum = 9
+current_fetched_scale = 9
+
 
 class MyWidget(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint = (1, 1)
 
-        self.scatter = Scatter(scale_min=SCALE_MINIMUM, scale_max=SCALE_MAXIMUM)
+        self.scatter = Scatter(do_rotation=False, scale_min=SCALE_MINIMUM, scale_max=SCALE_MAXIMUM)
         
         tiler_obj = TileApp()
         
@@ -26,7 +30,7 @@ class MyWidget(Widget):
         
         # Bytest to texture tooling
         
-        size1, size2, raw_image_bytes = tiler_obj.get_image_square_bytes_on_zoom(10)
+        size1, size2, raw_image_bytes = tiler_obj.get_image_square_bytes_on_zoom(current_fetched_scale)
         map_texture = Texture.create(size=(size1,size2))
         print(f"Size 1 {size1} Size 2 {size2}")
         map_texture.blit_buffer(raw_image_bytes,colorfmt='rgba', bufferfmt='ubyte')
@@ -71,6 +75,22 @@ class MyWidget(Widget):
         # Now you can always get the current scale (and pos/rotation)
         print(f"Scatter transformed: Pos={instance.pos}, Scale={instance.scale}, Rotation={instance.rotation}")
         # You can use instance.scale here for other logic
+        
+        # Update zoom, tiler range is 9 to 13
+        
+        scale_divider = (SCALE_MAXIMUM - SCALE_MINIMUM) / 4
+        
+        scale_offset = instance.scale // scale_divider
+        
+        print(f"SCALE OFFSET {scale_offset}")
+        
+        if tiler_scale_minimum + scale_offset != current_fetched_scale:
+            print(f"MOCK FETCH NEW ZOOM ")
+        
+        
+        
+
+        
     
     
     
