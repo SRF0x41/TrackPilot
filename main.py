@@ -58,10 +58,17 @@ class LRT(App):
             padding=[10, 120, 10, 150],  # [left, top, right, bottom]
             spacing=10
         )
+        
+        
+        ''' ********** TEST WIDGET ********** '''
+        test_widget = MyWidget()
+        layout.add_widget(test_widget)
+        
+        
 
         """ ---------- MAP ---------- """
         self.APP_PATH = self.user_data_dir
-
+        """
         for root, dirs, files in os.walk(self.APP_PATH):
             for f in files:
                 if f.endswith(".mbtiles"):
@@ -95,8 +102,9 @@ class LRT(App):
             pause_on_action=False,
         )
 
-        # layout.add_widget(mapview)
-
+        # layout.add_widget(mapview)"""
+        
+        ''' ********** MONITER WIDGET ********** '''
         self.moniter_text_buffer = []
         self.system_moniter = Label(
             text="Press start gps data collection",
@@ -106,15 +114,16 @@ class LRT(App):
             text_size=(1000, None),
             size_hint=(1, 1)
         )
-        layout.add_widget(self.system_moniter)
+        # layout.add_widget(self.system_moniter)
 
+        ''' ********** TOGGLE GPS SYSTEM WIDGET ********** '''
         self.toggle_record_data = False
         toggle_gps_system = Button(
             text="Toggle GPS",
             size_hint=(1, 0.4)
         )
         toggle_gps_system.bind(on_press=self.toggle_start_gps_system)
-        layout.add_widget(toggle_gps_system)
+        # layout.add_widget(toggle_gps_system)
 
         delete_local_data_button = Button(
             text='Delete Local Data',
@@ -126,7 +135,7 @@ class LRT(App):
         """ ********** GLOBAL POSITIONING SYSTEM RECORD START ********** """
         self.data_store_obj = DataStore(self.APP_PATH)
         self.nav_object = Navigation(self.nav_object_callback)
-        self.data_store_obj.see_full_path_data()
+        # self.data_store_obj.see_full_path_data()
 
         """ ********** CLIENT SIDE DATA LINK ********** """
         push_local_data_to_server_button = Button(

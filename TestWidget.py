@@ -4,20 +4,45 @@ from kivy.uix.scatter import Scatter
 from kivy.uix.image import Image
 from kivy.uix.widget import Widget
 from kivy.core.image import Image as CoreImage
+from kivy.graphics.texture import Texture
+from kivy.graphics import Rectangle
 
-import sqlite3
+from test_tiler import TileApp
+
+# Scale
+SCALE_MINIMUM = 2
+SCALE_MAXIMUM = 14
 
 class MyWidget(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint = (1, 1)
 
-        self.scatter = Scatter()
-        image = Image(source='i-can-has-cheezburger-cat.jpg')
-        self.scatter.add_widget(image)
+        self.scatter = Scatter(scale_min=SCALE_MINIMUM, scale_max=SCALE_MAXIMUM)
+        
+        tiler_obj = TileApp()
+        
+        
+        
+        # Bytest to texture tooling
+        
+        size1, size2, raw_image_bytes = tiler_obj.get_image_square_bytes_on_zoom(10)
+        map_texture = Texture.create(size=(size1,size2))
+        print(f"Size 1 {size1} Size 2 {size2}")
+        map_texture.blit_buffer(raw_image_bytes,colorfmt='rgba', bufferfmt='ubyte')
+        
+        
+        
+        # image = Image(source='i-can-has-cheezburger-cat.jpg')
+    
+        self.scatter.size = map_texture.size
+        
+        self.scatter.add_widget(Image(texture=map_texture, size=map_texture.size, size_hint=(None,None)))
+        
+        
 
         self.scatter.pos = (300, 300)
-        self.scatter.scale = 5
+        self.scatter.scale = 1
 
         # Bind all properties to a single handler function
         self.scatter.bind(
@@ -29,8 +54,7 @@ class MyWidget(Widget):
         self.add_widget(self.scatter)
         
         ''' ********** DATABASE COMMS TOOLING ********** '''
-        self.database_comms = sqlite3.connect('colorado_tiles.mbtiles')
-        self.database_cursor = self.database_comms.cursor()
+        
         
         
         #self.get_tile(1,1,1)

@@ -1,0 +1,50 @@
+# create a 64x64 texture, defaults to rgba / ubyte
+texture = Texture.create(size=(64, 64))
+
+# create 64x64 rgb tab, and fill with values from 0 to 255
+# we'll have a gradient from black to white
+size = 64 * 64 * 3
+buf = [int(x * 255 / size) for x in range(size)]
+
+# then, convert the array to a ubyte string
+buf = b''.join(map(chr, buf))
+
+# then blit the buffer
+texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+
+# that's all ! you can use it in your graphics now :)
+# if self is a widget, you can do this
+with self.canvas:
+    Rectangle(texture=texture, pos=self.pos, size=(64, 64))
+
+
+
+    Rectangle(pos=(10, 10), size=(500, 500))
+
+
+    tex = map_texture
+img_widget = Image(texture=tex, size=tex.size, size_hint=(None, None))
+
+self.scatter.add_widget(img_widget)
+
+/Users/sergiorodriguez/Desktop/dev/kivy_ios/lrt-ios/YourApp copy(/Users/sergiorodriguez/Desktop/dev/kivy_ios/lrt-ios/YourApp/satellite-2017-11-02_us_colorado.mbtiles, /Users/sergiorodriguez/Library/Developer/Xcode/DerivedData/lrt-evekqjalvdyibbfythunxopyhbsi/Build/Products/Debug-iphoneos/lrt.app/YourApp/satellite-2017-11-02_us_colorado.mbtiles): No space left on device (28)
+/Users/sergiorodriguez/Desktop/dev/kivy_ios/lrt-ios/YourApp copy(/Users/sergiorodriguez/Desktop/dev/kivy_ios/lrt-ios/YourApp/.cache/hostpython3-Python-3.11.6.tgz, /Users/sergiorodriguez/Library/Developer/Xcode/DerivedData/lrt-evekqjalvdyibbfythunxopyhbsi/Build/Products/Debug-iphoneos/lrt.app/YourApp/.cache/hostpython3-Python-3.11.6.tgz): No space left on device (28)
+
+
+from PIL import Image
+import io
+
+size1, size2, encoded_bytes = tiler_obj.get_image_square_bytes_on_zoom(10)
+
+# Load bytes using Pillow
+pil_img = Image.open(io.BytesIO(encoded_bytes)).convert("RGBA")
+
+# Ensure Pillow generated raw rgba buffer
+raw = pil_img.tobytes()
+
+# Create texture
+map_texture = Texture.create(size=pil_img.size, colorfmt="rgba")
+map_texture.blit_buffer(raw, colorfmt="rgba", bufferfmt="ubyte")
+
+# Kivy loads textures upside down, so flip if needed
+map_texture.flip_vertical()

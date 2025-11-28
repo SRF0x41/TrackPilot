@@ -7,7 +7,7 @@ import os
 class DataLink():
 
     def __init__(self):
-        self.__mac_ip = "xxxx"
+        self.__mac_ip = "192.168.1.219"
         pass
             
     def __establish_connection_server(self):

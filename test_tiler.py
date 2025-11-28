@@ -1,6 +1,5 @@
-import tkinter as tk
 import sqlite3
-from PIL import Image, ImageTk
+from PIL import Image
 from io import BytesIO
 import math
 
@@ -10,26 +9,46 @@ COLORADO_BOUNDING_BOX = ( -124.41060660766607,32.5342307609976,-114.134457905879
 DENVER_LAT = 39.7392
 DENVER_LON = -104.9903
 
-''' Max zoom is 13'''
+''' Max zoom is 13
+
+'''
+
+
+''' BASIC CLASS FUNCTION 
+
+    get the center cordinates of the screen, and zoom level
+    -> calculate if the col row off the center cordinates
+        -> if the internal col row differ from the newly calcuated col row, output a new image, else return null 
+    -> if the zoom changes, return a new screen else return null'''
+
 
 class TileApp:
-    def __init__(self):
+    def __init__(self, max_zoom = 13, min_zoom = 9):
         # iPhone window size
         self.iphone_width = 1170
         self.iphone_height = 2532
         '''1170 × 2532 pixels'''
-
-        # Create window
-        self.root = tk.Tk()
-        self.root.title("iPhone-sized window")
-        self.root.geometry(f"{self.iphone_width}x{self.iphone_height}")
-        self.root.resizable(False, False)
-
-        # Start AFTER UI is created
-        self.start()
-
-        self.root.mainloop()
-
+        
+        ''' *********** CLASS TOOLING ********** '''
+        self.max_zoom = max_zoom
+        self.min_zoom = min_zoom
+        
+        self.default_zoom = min_zoom
+        
+        self.internal_col, self.internal_row = self.latlon_to_tile(DENVER_LAT,DENVER_LON,10)
+        
+        
+        ''' ********** DATABASE TOOLING ********** '''
+         # DATABASE
+        self.comms = sqlite3.connect('satellite-2017-11-02_us_colorado.mbtiles')
+        self.database_cursor = self.comms.cursor()
+        
+        
+        
+        
+        
+    # Fake main for testing 
+    
     def start(self):
         """Runs after UI is built."""
         print("Starting app logic...")
@@ -155,6 +174,118 @@ class TileApp:
             count = count + 1
                 
         pil_img.save('combined_image.png')
+        
+        
+    
+    def get_image_on_zoom(self,zoom):
+        TILE_DIM = 256
+        
+        # Pull total tiles
+        self.database_cursor.execute('SELECT count(tile_data) FROM tiles WHERE zoom_level=?',(zoom,))
+        number_of_tiles = self.database_cursor.fetchone()
+        root_tiles = int(math.sqrt(number_of_tiles[0]))
+        print(f"N TILES: {number_of_tiles}  SQRT TILES: {root_tiles}")
+        
+        # Create stream cursor
+        stream_cursor = self.database_cursor.execute('SELECT tile_data FROM tiles WHERE zoom_level=?',(zoom,))
+        
+        # Create image to paste to
+        pil_img = Image.new('RGB',(TILE_DIM *root_tiles,TILE_DIM*root_tiles))
+        
+        # Image dimensions
+        print(f"{TILE_DIM *root_tiles}x{TILE_DIM *root_tiles}")
+        
+        count = 0
+        for data_blob in stream_cursor:
+            image = Image.open(BytesIO(data_blob[0]))
+            vertical_offset = int((count/root_tiles)) 
+            horizontal_offset = root_tiles - 1 - (count%root_tiles) 
+            pil_img.paste(image,(vertical_offset*TILE_DIM,horizontal_offset*TILE_DIM))
+            count = count + 1
+            
+        
+        return root_tiles * 256, root_tiles * 256, pil_img.tobytes()
+    
+    
+    
+    
+    def get_image_square_bytes_on_zoom(self,zoom):
+        # At zooms 6 7 8 starts looking at colorado only
+        '''sqlite> SELECT count(*) from tiles WHERE zoom_level = 6;
+        4
+        sqlite> SELECT count(*) from tiles WHERE zoom_level = 7;
+        9
+        sqlite> SELECT count(*) from tiles WHERE zoom_level = 8;
+        30
+        
+        '''
+        
+        DISPLAYED_TILE_SIZE = 256
+        
+        # Check number of tiles 
+        self.database_cursor.execute('SELECT count(*) from tiles WHERE zoom_level = ?;',(zoom,))
+        num_tiles = self.database_cursor.fetchone()
+        print(f"Number of tiles {num_tiles[0]}")
+        if num_tiles[0] < DISPLAYED_TILE_SIZE:
+            #fetch all tiles and display
+            pass
+        
+        TILE_DIM = 256
+        
+        x,y = self.latlon_to_tile(DENVER_LAT,DENVER_LON,zoom)
+        print(f"COLORADO CORDS {x} {y}")
+        
+        
+        # Consider pulling tiles to wrap around the world in the case less than expected is fetched using between
+        
+        left_x = x - 2
+        right_x = x + 2
+        
+        top_y = y - 2
+        bottom_y = y + 2
+        
+        # check for number of cutout tiles
+        coutout_num_tiles = self.database_cursor.execute("""SELECT count(tile_data) FROM tiles 
+                                        WHERE zoom_level = ? AND 
+                                        tile_column BETWEEN ? AND ? 
+                                        AND tile_row BETWEEN ? AND ?;""",
+                                        (zoom, (left_x),(right_x),(top_y),(bottom_y))
+                                        ).fetchone()
+        
+        print(f"Number of cutout tiles {coutout_num_tiles[0]}")
+      
+        stream_cursor = self.database_cursor.execute("""SELECT tile_data FROM tiles 
+                                        WHERE zoom_level = ? AND 
+                                        tile_column BETWEEN ? AND ? 
+                                        AND tile_row BETWEEN ? AND ?
+                                        ORDER BY tile_row DESC, tile_column ASC;""",
+                                        (zoom, (left_x),(right_x),(top_y),(bottom_y))
+                                        )
+        
+        image_width = 4
+        image_height = 4
+        
+        # Create image to paste to
+        pil_img = Image.new('RGB',(TILE_DIM *image_width,TILE_DIM*image_height))
+        
+        # Image dimensions
+        print(f"{TILE_DIM *image_width}x{TILE_DIM *image_height}")
+        
+        count = 0
+        for data in stream_cursor:
+            image = Image.open(BytesIO(data[0]))
+            vertical_offset = int((count/image_width)) 
+            horizontal_offset =   (count%image_width) 
+            pil_img.paste(image,(vertical_offset*TILE_DIM,horizontal_offset*TILE_DIM))
+            print(f"image pastings {horizontal_offset} {vertical_offset}")
+            count = count + 1
+                
+        #pil_img.save('cutout_image.png')
+        pil_img = pil_img.convert("RGBA")
+
+        return image_height*TILE_DIM, image_width*TILE_DIM, pil_img.tobytes()
+        
+        
        
             
         
@@ -248,7 +379,10 @@ class TileApp:
                 
         pil_img.save('cutout_image.png')
             
-        
+    
+    
+    def get_screen(self,zoom,lat,lon):
+        pass
         
         
     
